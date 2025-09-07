@@ -28,7 +28,7 @@ def receive_message():
 
     # If the server is in a blocking state, return a specific response.
     if is_blocking or get_global_state()==0:
-        resp = make_llm_response("⚠ RKLLM_Server 正忙碌! 请稍后再尝试.")
+        resp = make_llm_response("⚠ RKLLM_Server 正忙碌! 请稍后再尝试. 这通常是由于Web UI前端正在执行自动生成标签、标题, 以及自动补齐等任务.")
         return jsonify(resp), 200
     
     lock.acquire()
