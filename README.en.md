@@ -1,13 +1,17 @@
-## Introduction
+# rkllm openai like api server
 
-rkllm server code compatible with the OpenAI API format.
+## Introduction
+An RKLLM server implementation compatible with the OpenAI API format.
+
+## Supported Platforms
+- RK3588 Series
+- RK3576 Series
 
 ## Usage
-
 ```bash
-git clone https://github.com/huonwe/rkllm_openai_like_api.git
+git clone [https://github.com/huonwe/rkllm_openai_like_api.git](https://github.com/huonwe/rkllm_openai_like_api.git)
 cd rkllm_openai_like_api
-```
+````
 
 Add the required dynamic libraries:
 
@@ -18,28 +22,28 @@ sudo cp lib/*.so /usr/lib
 Install uv:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
 ```
 
-Install Python dependencies:
+Sync dependencies:
 
 ```bash
 uv sync
 ```
 
-Run:
+Run the server:
 
 ```bash
 uv run server.py
 ```
 
-- By default, the target platform is rk3588, and the model path is models/deepseek-r1-1.5b-w8a8.rkllm, and the listening port is 8080.
-- You can manually specify parameters, such as `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3576 --port=8080`
+  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `8080`.
+  - You can manually specify parameters, for example:
+    `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-Then, you can access this server through `http://your.ip:8080/rkllm_chat/v1`.
-Please note that the server only implemented `/v1/chat/completions`, so not all of the functions can work properly
+After startup, you can connect to this service via `http://your.ip:8080/rkllm_chat/v1`. Since only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
 
-You can use client.py to test:
+You can test it using `client.py`:
 
 ```bash
 uv run client.py
@@ -47,8 +51,16 @@ uv run client.py
 
 ## Notes
 
-Do not use the rkllm local running model to automatically generate titles, tags, or similar tasks. When performing such tasks, users will be unable to chat with the model because, due to performance limitations, the server can only process one conversation at a time. If there is an ongoing conversation that has not been completed, the server will not accept any other conversations.
+**Do not use the locally running RKLLM model for background tasks such as automatic title or tag generation.**
 
-## Model
+While such tasks are in progress, users will be unable to chat with the model. The server can only process one conversation at a time. If there is currently an unfinished conversation being processed, no other requests will be accepted.
 
-Here is the 1.5b distilled version of the deepseek-r1 rkllm model, you can download it if needed: [download](https://drive.google.com/drive/folders/1I4XHZeNcDQgm1A2BTzatmUWdNHIQSsMJ?usp=sharing)
+## Changelog
+
+  - [x] Implemented `/v1/models`; manual addition of the Model ID is no longer required. -- 2025-02-05
+  - [x] Removed dependency on transformers' `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
+  - [x] Adapted to RKLLM version 1.2.3. Optimized code logic. The default template now uses the ChatML format. -- 2025-12-08
+
+## Models
+
+Please refer to the [rkllm\_model\_zoo](https://github.com/airockchip/rknn-llm/tree/main#download).

@@ -2,34 +2,31 @@ import re
 
 def apply_chat_template(messages):
     """
-    该格式只针对deepseek-r1-distill-qwen-1.5b进行过测试.
-    如果使用的是其它模型，请自行修改此处逻辑.
-
-    You will need to modify this function if you use some other models except deepseek-r1-distill-qwen-1.5b.
+    适用于大部分采用 ChatML 格式的模型。
     """
-    begin_of_sentence = "<｜begin▁of▁sentence｜>"
-    end_of_sentence = "<｜end▁of▁sentence｜>"
-    user_position = "<｜User｜>"
-    assistant_position = "<｜Assistant｜>"
-    think_content = re.compile('<think>.*</think>')
-
-    sentence = ""
-    sentence += begin_of_sentence
+    # 定义标准 ChatML 令牌
+    # 注意：RKLLM 转换时如果没有特殊指定，通常保留了原模型的 Tokenizer 行为
+    # Qwen 系列的标准特殊 Token 是 <|im_start|> 和 <|im_end|>
+    im_start = "<|im_start|>"
+    im_end = "<|im_end|>"
+    
+    # 2. 构建 Prompt
+    prompt = ""
+    
     for msg in messages:
-        if msg['role'] == 'system':
-            sentence += msg['content']
-        if msg['role'] == 'user':
-            sentence += user_position
-            sentence += msg['content']
-        if msg['role'] == "assistant":
-            sentence += assistant_position
-            sentence += msg['content']
-            sentence += end_of_sentence
+        role = msg['role']
+        content = msg['content']
+        
+        # 移除思维链内容（如果不想让模型看到之前的思考过程，保留此逻辑）
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
 
-    # 送给模型的对话记录中删除think标签内的内容
-    sentence = think_content.sub('', sentence)
-    return sentence
+        # 格式：<|im_start|>role\ncontent<|im_end|>\n
+        prompt += f"{im_start}{role}\n{content}{im_end}\n"
 
+    # 追加助手角色的起始标记，等待模型生成内容
+    prompt += f"{im_start}assistant\n"
+    
+    return prompt
 
 def make_llm_response(llm_output: str) -> dict:
     # Define the structure for the returned response.

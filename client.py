@@ -1,80 +1,82 @@
-import sys
 import requests
 import json
-  
-# Set the address of the Server.
-server_url = 'http://127.0.0.1:8080/rkllm_chat/v1/chat/completions'
-# Set whether to enable streaming mode.
-is_streaming = True
+import argparse
+import sys
 
-# Create a session object.
-session = requests.Session()
-session.keep_alive = False  # Close the connection pool to maintain a long connection.
-adapter = requests.adapters.HTTPAdapter(max_retries=5)
-session.mount('https://', adapter)
-session.mount('http://', adapter)
+def chat_completions(host, prompt, stream=False):
+    url = f"{host}/rkllm_chat/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    # 构造请求数据
+    payload = {
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "stream": stream
+    }
 
-if __name__ == '__main__':
-    print("============================")
-    print("Input your question in the terminal to start a conversation with the RKLLM model...")
-    print("============================")
-    # Enter a loop to continuously get user input and converse with the RKLLM model.
-    while True:
-        try:
-            user_message = input("\n*Please enter your question:")
-            if user_message == "exit":
-                print("============================")
-                print("The RKLLM Server is stopping......")
-                print("============================")
-                break
-            else:
-                # Set the request headers; in this case, the headers have no actual effect and are only used to simulate the OpenAI interface design.
-                headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'not_required'
-                }
+    print(f"[-] Sending request to {url}...")
+    print(f"[-] Stream mode: {'ON' if stream else 'OFF'}")
+    print(f"[-] Prompt: {prompt}")
+    print("-" * 40)
 
-                # Prepare the data to be sent
-                # model: The model defined by the user when setting up RKLLM-Server; this has no effect here
-                # messages: The user's input question, which RKLLM-Server will use as input and return the model's reply; multiple questions can be added to messages
-                # stream: Whether to enable streaming conversation, similar to the OpenAI interface
-                data = {
-                    "model": 'your_model_deploy_with_RKLLM_Server',
-                    "messages": [{"role": "user", "content": user_message}],
-                    "stream": is_streaming
-                }
+    try:
+        response = requests.post(url, headers=headers, json=payload, stream=stream)
+        
+        if response.status_code != 200:
+            print(f"[!] Error: Server returned status code {response.status_code}")
+            print(response.text)
+            return
 
-                # Send a POST request
-                responses = session.post(server_url, json=data, headers=headers, stream=is_streaming, verify=False)
-
-                if not is_streaming:
-                    # Parse the response
-                    if responses.status_code == 200:
-                        print("Q:", data["messages"][-1]["content"])
-                        print("A:", json.loads(responses.text)["choices"][-1]["message"]["content"])
-                    else:
-                        print("Error:", responses.text)
-                else:
-                    if responses.status_code == 200:
-                        print("Q:", data["messages"][-1]["content"])
-                        print("A:")
-                        for line in responses.iter_lines():
-                            if line:
-                                # print(line)
-                                line = json.loads(line.decode('utf-8').split("data: ")[1])
-                                print(line["choices"][-1]["delta"]["content"], end="")
-                                if line == "data: [DONE]":
-                                    # print(line["choices"][-1]["delta"]["content"], end="")
-                                    sys.stdout.flush()
-                    else:
-                        print('Error:', responses.text)
+        if stream:
+            # 流式处理 (Streaming Mode)
+            print("Response: ", end="", flush=True)
+            for line in response.iter_lines():
+                if line:
+                    decoded_line = line.decode('utf-8')
+                    # 服务端发送格式为: data: {json_data}
+                    if decoded_line.startswith("data: "):
+                        data_str = decoded_line[6:] # 去掉 "data: " 前缀
                         
-        except KeyboardInterrupt:
-            # Capture Ctrl-C signal to close the session
-            session.close()
+                        if data_str.strip() == "[DONE]":
+                            print("\n[Done]")
+                            break
+                        
+                        try:
+                            data_json = json.loads(data_str)
+                            # 获取 delta content
+                            if "choices" in data_json and len(data_json["choices"]) > 0:
+                                delta = data_json["choices"][0].get("delta", {})
+                                content = delta.get("content", "")
+                                print(content, end="", flush=True)
+                        except json.JSONDecodeError:
+                            continue
+        else:
+            # 非流式处理 (Non-Streaming Mode)
+            data = response.json()
+            # 适配服务端返回的结构
+            if "choices" in data and len(data["choices"]) > 0:
+                print("Response: " + data["choices"][0]["message"]["content"])
+            else:
+                print("Raw Response:", data)
 
-            print("\n")
-            print("============================")
-            print("The RKLLM Server is stopping......")
-            print("============================")
-            break
+    except requests.exceptions.ConnectionError:
+        print(f"[!] Could not connect to server at {host}. Is it running?")
+    except Exception as e:
+        print(f"[!] An error occurred: {e}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="RKLLM Chat Client Tester")
+    
+    parser.add_argument('--host', type=str, default="http://localhost:8081", 
+                        help='Server address (default: http://localhost:8081)')
+    parser.add_argument('--prompt', type=str, default="Hello, explain quantum mechanics briefly.", 
+                        help='The input prompt to send to the model')
+    parser.add_argument('--stream', action='store_true', 
+                        help='Enable streaming mode')
+
+    args = parser.parse_args()
+
+    chat_completions(args.host, args.prompt, args.stream)

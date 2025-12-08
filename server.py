@@ -3,13 +3,12 @@ import os
 import subprocess
 import resource
 import threading
-import time
 import argparse
 import json
 from flask import Flask, request, jsonify, Response
 from flask_cors import cross_origin
 from utils import apply_chat_template, make_llm_response
-from rkllm import RKLLM, get_global_state, get_global_text, set_global_state, set_global_text
+from rkllm import RKLLM, get_RKLLM_output, get_global_state
 
 app = Flask(__name__)
 # Create a lock to control multi-user access to the server.
@@ -39,57 +38,31 @@ def receive_message():
         # Get JSON data from the POST request.
         data = request.json
         if data and 'messages' in data:
-            # Reset global variables.
-            # global_text = []
-            # global_state = -1
-            set_global_text([])
-            set_global_state(-1)
-
             # Process the received data here.
-            # messages.insert(0,{'role':'system','content':'You are a helpful assistant.'})
             messages = data['messages']
+            # messages.insert(0,{'role':'system','content':'You are a helpful assistant.'})
+            # print("Received messages: ", messages)
             # tokenized = tokenizer.apply_chat_template(messages, tokenize=False)
             messages_formatted = apply_chat_template(messages)
-            print("messages_formatted: ", messages_formatted)
 
-            if not "stream" in data.keys() or data["stream"] == False:
-                input_prompt = messages_formatted
-                rkllm_output = ""                        
-                # Create a thread for model inference.
-                model_thread = threading.Thread(target=rkllm_model.run, args=(input_prompt,))
-                model_thread.start()
+            # 这里rkllm_model应当已经初始化完成并可用
+            results = get_RKLLM_output(rkllm_model, messages_formatted)
 
-                # Wait for the model to finish running and periodically check the inference thread of the model.
-                model_thread_finished = False
-                while not model_thread_finished:
-                    while len(get_global_text()) > 0:
-                        rkllm_output += get_global_text().pop(0)
-                        time.sleep(0.01)
-
-                    model_thread.join(timeout=0.005)
-                    model_thread_finished = not model_thread.is_alive()
-                
+            if data.get("stream", False):
+                def stream_generator():
+                    for r in results:
+                        # print("streaming chunk: ", r)
+                        yield f"data: {json.dumps({'choices':[
+                            {'delta':{'content': r}}]})}\n\n"
+                    yield f"data: [DONE]\n\n"
+                return Response(stream_generator(), mimetype='text/event-stream')
+            else:
+                rkllm_output = ""
+                for r in results:
+                    rkllm_output += r
                 rkllm_responses = make_llm_response(rkllm_output)
                 return jsonify(rkllm_responses), 200
-            else:
-                input_prompt = messages_formatted
-                def generate():
-                    model_thread = threading.Thread(target=rkllm_model.run, args=(input_prompt,))
-                    model_thread.start()
-                    
-                    model_thread_finished = False
-                    while not model_thread_finished:
-                        while len(get_global_text()) > 0:
-                            rkllm_output = get_global_text().pop(0)
-                            time.sleep(0.01)
 
-                            yield f"data: {json.dumps({'choices':[
-                                {'delta':{'content': rkllm_output}}]})}\n\n"
-            
-                        model_thread.join(timeout=0.005)
-                        model_thread_finished = not model_thread.is_alive()
-                    return f"data: [DONE]\n\n"
-                return Response(generate(), mimetype='text/event-stream')
         else:
             return jsonify({'status': 'error', 'message': 'Invalid JSON data!'}), 400
     finally:
@@ -109,7 +82,7 @@ def show_models():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--rkllm_model_path', type=str, default="models/deepseek-r1-1.5b-w8a8.rkllm", help='Absolute path of the converted RKLLM model on the Linux board;')
+    parser.add_argument('--rkllm_model_path', type=str, default="models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm", help='Absolute path of the converted RKLLM model on the Linux board;')
     parser.add_argument('--target_platform', type=str, default="rk3588", help='Target platform: e.g., rk3588/rk3576;')
     parser.add_argument('--lora_model_path', type=str, help='Absolute path of the lora_model on the Linux board;')
     parser.add_argument('--prompt_cache_path', type=str, help='Absolute path of the prompt_cache file on the Linux board;')
@@ -150,13 +123,12 @@ if __name__ == "__main__":
     print("=========init....===========")
     sys.stdout.flush()
     global_model = args.rkllm_model_path
-    rkllm_model = RKLLM(global_model, args.lora_model_path, args.prompt_cache_path)
+    rkllm_model = RKLLM(global_model, args.lora_model_path, args.prompt_cache_path, args.target_platform)
     print("RKLLM Model has been initialized successfully！")
     print("==============================")
     sys.stdout.flush()
         
     # Start the Flask application.
-    # app.run(host='0.0.0.0', port=8080)
     app.run(host='0.0.0.0', port=args.port, threaded=True, debug=False)
 
     print("====================")
