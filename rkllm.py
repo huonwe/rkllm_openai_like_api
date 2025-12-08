@@ -333,6 +333,7 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
             # 只要还有输出就 yield
             while len(global_text) > 0:
                 _w = global_text.pop(0)
+                print(_w, end="", flush=True)
                 time.sleep(0.005)
                 # 如果客户端断开，yield 会在这里抛出 GeneratorExit
                 yield _w 
