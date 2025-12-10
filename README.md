@@ -9,6 +9,20 @@
 - RK3576 Series
 - RKNPU Driver Version: v0.9.8
 
+## Quickstart
+```bash
+wget https://raw.githubusercontent.com/huonwe/rkllm_openai_like_api/refs/heads/main/docker-compose.yml
+
+mkdir models
+# Put your rkllm models here
+
+docker compose up -d
+
+# test
+# Change the ip and port if needed
+curl -N http://localhost:8080/test
+```
+
 ## 使用
 ```bash
 git clone https://github.com/huonwe/rkllm_openai_like_api.git

@@ -80,6 +80,19 @@ def show_models():
     }]})
     return Response(info, content_type="application/json")
 
+@app.route("/test", methods=['GET'])
+def test():
+    user_message = "Introduce yourself."
+    messages = [{'role':'user','content':user_message}]
+    messages_formatted = apply_chat_template(messages)
+    results = get_RKLLM_output(rkllm_model, messages_formatted)
+    def stream_generator():
+        for r in results:
+            # print("streaming chunk: ", r)
+            yield r
+        yield '\n'
+    return Response(stream_generator(), mimetype='text/event-stream')
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--rkllm_model_path', type=str, default=f"models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm", help='Path of the converted RKLLM model on the Linux board;')
@@ -122,8 +135,12 @@ if __name__ == "__main__":
             exit()
 
     # Fix frequency
-    command = "sudo bash fix_freq_{}.sh".format(args.target_platform)
-    subprocess.run(command, shell=True)
+    fix_req_file = "fix_freq_{}.sh".format(args.target_platform)
+    if os.path.exists(fix_req_file):
+        command = "sudo bash fix_freq_{}.sh".format(args.target_platform)
+        subprocess.run(command, shell=True)
+        print("Frequency has been fixed.")
+        sys.stdout.flush()
 
     # Set resource limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
@@ -143,3 +160,4 @@ if __name__ == "__main__":
     print("RKLLM model inference completed, releasing RKLLM model resources...")
     rkllm_model.release()
     print("====================")
+
