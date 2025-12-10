@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     
     if args.isDocker.lower() == 'y':
-        rkllm_model_path = "/app/models/" + os.path.basename(args.rkllm_model_path)
+        rkllm_model_path = "/rkllm_server/models/" + os.path.basename(args.rkllm_model_path)
     else:
         rkllm_model_path = args.rkllm_model_path
 
