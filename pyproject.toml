@@ -5,8 +5,12 @@ description = "兼容OpenAI API格式的server程序"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi==0.115.14",
     "flask>=3.1.0",
     "flask-cors>=5.0.0",
+    "httpx>=0.28.1",
+    "pydantic==2.11.9",
     "requests>=2.32.3",
     "rknn-toolkit-lite2>=2.3.0",
+    "uvicorn==0.38.0",
 ]

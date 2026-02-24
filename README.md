@@ -1,22 +1,21 @@
-# rkllm openai like api server
-[English](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.en.md)
+# rkllm ollama and openai api server
 
-## 介绍
-兼容OpenAI API格式的rkllm server代码
+## Introduction
+An RKLLM server implementation compatible with the Ollama (with Ollama-python) and OpenAI API format.
 
-## Support Platform
+## Supported Platforms
 - RK3588 Series
 - RK3576 Series
 - RKNPU Driver Version: v0.9.8
 
 ## Quickstart
-使用前先检查rknpu驱动版本
+Check the rknpu version before using:
 ```bash
 cat /sys/kernel/debug/rknpu/version
 ```
-如果没有输出，则说明当前内核不支持rknpu. 建议版本为0.9.8
+If no output, then your linux kernel doesn't support rknpu. It's recommended to be 0.9.8
 
-直接使用docker:
+use docker commandline:
 ```bash
 docker run -d \
   --name rkllm-server \
@@ -30,7 +29,7 @@ docker run -d \
   dukihiroi/rkllm-server:latest
 ```
 
-或者使用docker compose:
+or use docker compose:
 ```bash
 wget https://raw.githubusercontent.com/huonwe/rkllm_openai_like_api/refs/heads/main/docker-compose.yml
 
@@ -44,48 +43,74 @@ docker compose up -d
 curl -N http://localhost:8080/hello
 ```
 
-## 使用
+## Usage
 ```bash
-git clone https://github.com/huonwe/rkllm_openai_like_api.git
+git clone https://github.com/Willy030125/rkllm_ollama_api.git
 cd rkllm_openai_like_api
-```
-添加需要用到的动态库:
+````
+
+Add the required dynamic libraries:
+
 ```bash
 sudo cp lib/*.so /usr/lib
 ```
-安装uv:
+
+Install uv:
+
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
 ```
+
+Sync dependencies:
 
 ```bash
 uv sync
 ```
 
-运行:
+Run the server <b>(OpenAI API format)</b>:
+
 ```bash
 uv run server.py
 ```
-- 默认情况下，平台设置为rk3588，模型路径为`models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`，监听端口为`8080`
-- 你可以手动指定参数，如`uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-之后，你可以通过`http://your.ip:8080/rkllm_chat/v1`来连接到本服务。由于只实现了`/v1/chat/completions`, 所以并不是所有功能都可以正常使用。
+  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `8080`.
+  - You can manually specify parameters, for example:
+    `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-你可以用client.py测试:
+After startup, you can connect to this service via `http://your.ip:8080/rkllm_chat/v1`. Since only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
+
+You can test it using `client.py` (for OpenAI API format):
+
 ```bash
 uv run client.py
 ```
 
-## 注意事项
-不要使用rkllm本地运行的模型来进行自动生成标题、标签等任务。在进行此类任务时，用户将无法与模型聊天，同一时刻server只会处理一条对话。若当前存在对话未处理完成，则不会接受任何其他对话。
+Run the server <b>(Ollama API format)</b>:
 
-## 更新记录
-- [x] 实现了/v1/models，现在无需手动添加模型ID.  --20250205
-- [x] 删除了对transformers的AutoTokenizer的依赖, 现在无需配置网络环境以连接到huggingface.  --20250211
-- [x] 适配了1.2.3的rkllm版本. 优化了代码逻辑. 默认模板使用ChatML格式. --20251208
-- [x] 如果RKLLM忙碌，那么请求会等待最多10秒，而不是立即返回忙碌信息. --20251210
+```bash
+uv run ollama_server.py
+```
 
-## 模型
-请参照[rkllm_model_zoo](https://github.com/airockchip/rknn-llm/tree/main#download)
+  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `11434`.
+  - You can manually specify parameters, for example:
+    `uv run ollama_server.py -m Qwen3-1.7B-rk3588-w8a8-opt-0.rknn --target_platform=rk3588 --port=11434`
 
-注意，自己转换的旧版本的rkllm模型在新版本的rkllm推理时会出现错误，比如无限循环
+For Ollama API, you can use regular Ollama-python script to call ollama using `ollama.chat()` or `ollama.AsyncClient()` for async API calling. The `tools` calling in Ollama-python is supported, as well as `stream` and `think` params are supported (e.g. enable/disable thinking in Ollama Qwen3 models). Vision `images` support for Ollama API is not yet implemented.
+
+## Notes
+
+**Do not use the locally running RKLLM model for background tasks such as automatic title or tag generation.**
+
+While such tasks are in progress, users will be unable to chat with the model. The server can only process one conversation at a time. If there is currently an unfinished conversation being processed, no other requests will be accepted.
+
+## Changelog
+
+  - [x] Implemented `/v1/models`; manual addition of the Model ID is no longer required. -- 2025-02-05
+  - [x] Removed dependency on transformers' `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
+  - [x] Adapted to RKLLM version 1.2.3. Optimized code logic. The default template now uses the ChatML format. -- 2025-12-08
+  - [x] If RKLLM is busy, the request will wait for max 10s, rather than response error immediately. --2025-12-10
+  - [x] Added Ollama API with `tools`, `stream`, `think` parameters support. --2026-02-24
+
+## Models
+
+Please refer to the [rkllm\_model\_zoo](https://github.com/airockchip/rknn-llm/tree/main#download).

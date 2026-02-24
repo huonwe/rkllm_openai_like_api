@@ -1,6 +1,6 @@
 import re
 
-def apply_chat_template(messages):
+def apply_chat_template(messages, thinking=True):
     """
     适用于大部分采用 ChatML 格式的模型。
     """
@@ -20,8 +20,11 @@ def apply_chat_template(messages):
         # 移除思维链内容（如果不想让模型看到之前的思考过程，保留此逻辑）
         content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
 
-        # 格式：<|im_start|>role\ncontent<|im_end|>\n
-        prompt += f"{im_start}{role}\n{content}{im_end}\n"
+        # 格式：<|im_start|>role\ncontent<|im_end|>\n + /nothink if thinking != True
+        if thinking:
+            prompt += f"{im_start}{role}\n{content}{im_end}\n"
+        else:
+            prompt += f"{im_start}{role}\n{content} /nothink{im_end}\n"
 
     # 追加助手角色的起始标记，等待模型生成内容
     prompt += f"{im_start}assistant\n"

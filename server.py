@@ -48,6 +48,9 @@ def receive_message():
             # print("Received messages: ", messages)
             # tokenized = tokenizer.apply_chat_template(messages, tokenize=False)
             messages_formatted = apply_chat_template(messages)
+            print("==== DEBUG ====")
+            print(messages_formatted)
+            print("==== END DEBUG ====")
 
             # 这里rkllm_model应当已经初始化完成并可用
             results = get_RKLLM_output(rkllm_model, messages_formatted)
