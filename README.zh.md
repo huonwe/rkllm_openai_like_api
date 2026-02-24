@@ -69,7 +69,7 @@ uv run server.py
 - 默认情况下，平台设置为rk3588，模型路径为`models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`，监听端口为`11434`
 - 你可以手动指定参数，如`uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-之后，你可以通过`http://your.ip:11434/api/v1`来连接到本服务。由于只实现了`/v1/chat/completions`, 所以并不是所有功能都可以正常使用。
+之后，你可以通过`http://your.ip:11434/api/v1`来连接到OpenAI API。由于只实现了`/v1/chat/completions`, 所以并不是所有功能都可以正常使用。
 
 ### API 列表:
 - Ollama API
