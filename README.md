@@ -1,7 +1,8 @@
-# rkllm ollama and openai api server
+# rkllm api server
+[中文](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.zh.md)
 
 ## Introduction
-An RKLLM server implementation compatible with the Ollama (with Ollama-python) and OpenAI API format.
+An RKLLM server implementation compatible with the OpenAI API format.
 
 ## Supported Platforms
 - RK3588 Series
@@ -45,7 +46,7 @@ curl -N http://localhost:8080/hello
 
 ## Usage
 ```bash
-git clone https://github.com/Willy030125/rkllm_ollama_api.git
+git clone https://github.com/huonwe/rkllm_openai_like_api.git
 cd rkllm_openai_like_api
 ````
 
@@ -58,7 +59,7 @@ sudo cp lib/*.so /usr/lib
 Install uv:
 
 ```bash
-curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+curl -LsSf https://astral.sh/uv/install.sh
 ```
 
 Sync dependencies:
@@ -67,35 +68,23 @@ Sync dependencies:
 uv sync
 ```
 
-Run the server <b>(OpenAI API format)</b>:
+Run the server:
 
 ```bash
 uv run server.py
 ```
 
-  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `8080`.
+  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `11434`.
   - You can manually specify parameters, for example:
     `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-After startup, you can connect to this service via `http://your.ip:8080/rkllm_chat/v1`. Since only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
+After startup, you can connect to this service via `http://your.ip:11434/openai/api/v1`. Because only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
 
 You can test it using `client.py` (for OpenAI API format):
 
 ```bash
 uv run client.py
 ```
-
-Run the server <b>(Ollama API format)</b>:
-
-```bash
-uv run ollama_server.py
-```
-
-  - By default, the platform is set to `rk3588`, the model path is `models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`, and the listening port is `11434`.
-  - You can manually specify parameters, for example:
-    `uv run ollama_server.py -m Qwen3-1.7B-rk3588-w8a8-opt-0.rknn --target_platform=rk3588 --port=11434`
-
-For Ollama API, you can use regular Ollama-python script to call ollama using `ollama.chat()` or `ollama.AsyncClient()` for async API calling. The `tools` calling in Ollama-python is supported, as well as `stream` and `think` params are supported (e.g. enable/disable thinking in Ollama Qwen3 models). Vision `images` support for Ollama API is not yet implemented.
 
 ## Notes
 
@@ -109,7 +98,6 @@ While such tasks are in progress, users will be unable to chat with the model. T
   - [x] Removed dependency on transformers' `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
   - [x] Adapted to RKLLM version 1.2.3. Optimized code logic. The default template now uses the ChatML format. -- 2025-12-08
   - [x] If RKLLM is busy, the request will wait for max 10s, rather than response error immediately. --2025-12-10
-  - [x] Added Ollama API with `tools`, `stream`, `think` parameters support. --2026-02-24
 
 ## Models
 

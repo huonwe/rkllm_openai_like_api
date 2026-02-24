@@ -1,5 +1,5 @@
 # rkllm openai like api server
-[English](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.en.md)
+[English](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.md)
 
 ## 介绍
 兼容OpenAI API格式的rkllm server代码
