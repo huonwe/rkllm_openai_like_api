@@ -62,12 +62,12 @@ class ChatRequest(BaseModel):
     think: Optional[bool] = True    # Default True for Qwen3
     
     # OpenAI compatibility fields (ignored but allowed)
-    max_tokens: Optional[int] = None
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
-    stop: Optional[Union[str, List[str]]] = None
-    frequency_penalty: Optional[float] = 0
-    presence_penalty: Optional[float] = 0
+    # max_tokens: Optional[int] = None
+    # temperature: Optional[float] = None
+    # top_p: Optional[float] = None
+    # stop: Optional[Union[str, List[str]]] = None
+    # frequency_penalty: Optional[float] = 0
+    # presence_penalty: Optional[float] = 0
 
 # --- 2. Tool & Think Parsing Logic ---
 
