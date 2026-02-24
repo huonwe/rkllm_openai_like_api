@@ -45,7 +45,7 @@ curl -N http://localhost:8080/hello
 
 ## Usage
 ```bash
-git clone [https://github.com/huonwe/rkllm_openai_like_api.git](https://github.com/huonwe/rkllm_openai_like_api.git)
+git clone https://github.com/huonwe/rkllm_openai_like_api.git
 cd rkllm_openai_like_api
 ````
 
@@ -58,7 +58,7 @@ sudo cp lib/*.so /usr/lib
 Install uv:
 
 ```bash
-curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+curl -LsSf https://astral.sh/uv/install.sh
 ```
 
 Sync dependencies:
