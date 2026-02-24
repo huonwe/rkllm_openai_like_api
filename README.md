@@ -106,7 +106,7 @@ While such tasks are in progress, users will be unable to chat with the model. T
   - [x] Removed dependency on transformers's `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
   - [x] Adapted to RKLLM version 1.2.3. Optimized code logic. The default template now uses the ChatML format. -- 2025-12-08
   - [x] If RKLLM is busy, the request will wait for max 10s, rather than response error immediately. --2025-12-10
-  - [x] Ollama is supported. Change to FastAPI. API URL is changed.
+  - [x] Ollama is supported. Change to FastAPI. API URL is changed. --2026-02-24
 
 ## Models
 

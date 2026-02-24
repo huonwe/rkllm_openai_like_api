@@ -92,7 +92,7 @@ uv run client.py
 - [x] 删除了对transformers的AutoTokenizer的依赖, 现在无需配置网络环境以连接到huggingface.  --20250211
 - [x] 适配了1.2.3的rkllm版本. 优化了代码逻辑. 默认模板使用ChatML格式. --20251208
 - [x] 如果RKLLM忙碌，那么请求会等待最多10秒，而不是立即返回忙碌信息. --20251210
-- [x] 适配了Ollama, Flask 替换为了 FastAPI. API URL发生了变化。
+- [x] 适配了Ollama, Flask 替换为了 FastAPI. API URL发生了变化。 --20260224
 
 ## 模型
 请参照[rkllm_model_zoo](https://github.com/airockchip/rknn-llm/tree/main#download)
