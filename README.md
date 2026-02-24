@@ -2,7 +2,7 @@
 [中文](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.zh.md)
 
 ## Introduction
-An RKLLM server implementation compatible with the OpenAI API format.
+An RKLLM server implementation compatible with the OpenAI API and Ollama API format.
 
 ## Supported Platforms
 - RK3588 Series
@@ -78,7 +78,15 @@ uv run server.py
   - You can manually specify parameters, for example:
     `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-After startup, you can connect to this service via `http://your.ip:11434/openai/api/v1`. Because only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
+After startup, you can connect to this service via `http://your.ip:11434/api/v1`. Because only the `/v1/chat/completions` (OpenAI API) endpoint is implemented, not all features may function as expected.
+
+### API List:
+- Ollama API
+  - `/api/chat`
+  - `/api/tags`
+- OpenAI API
+  - `/v1/chat/completions`
+  - `/v1/models`
 
 You can test it using `client.py` (for OpenAI API format):
 
@@ -95,9 +103,10 @@ While such tasks are in progress, users will be unable to chat with the model. T
 ## Changelog
 
   - [x] Implemented `/v1/models`; manual addition of the Model ID is no longer required. -- 2025-02-05
-  - [x] Removed dependency on transformers' `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
+  - [x] Removed dependency on transformers's `AutoTokenizer`. Configuring a network environment to connect to Hugging Face is no longer necessary. -- 2025-02-11
   - [x] Adapted to RKLLM version 1.2.3. Optimized code logic. The default template now uses the ChatML format. -- 2025-12-08
   - [x] If RKLLM is busy, the request will wait for max 10s, rather than response error immediately. --2025-12-10
+  - [x] Ollama is supported. Use FastAPI instead of Flask. API URL is changed.
 
 ## Models
 

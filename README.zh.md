@@ -2,13 +2,13 @@
 [English](https://github.com/huonwe/rkllm_openai_like_api/blob/main/README.md)
 
 ## 介绍
-兼容OpenAI API格式的rkllm server代码
+兼容OpenAI API和Ollama API格式的rkllm server代码
 
-## Support Platform
+## Supported Platforms
 - RK3588 Series
 - RK3576 Series
 - RKNPU Driver Version: v0.9.8
-
+  
 ## Quickstart
 使用前先检查rknpu驱动版本
 ```bash
@@ -66,12 +66,20 @@ uv sync
 ```bash
 uv run server.py
 ```
-- 默认情况下，平台设置为rk3588，模型路径为`models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`，监听端口为`8080`
+- 默认情况下，平台设置为rk3588，模型路径为`models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm`，监听端口为`11434`
 - 你可以手动指定参数，如`uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-之后，你可以通过`http://your.ip:8080/rkllm_chat/v1`来连接到本服务。由于只实现了`/v1/chat/completions`, 所以并不是所有功能都可以正常使用。
+之后，你可以通过`http://your.ip:11434/api/v1`来连接到本服务。由于只实现了`/v1/chat/completions`, 所以并不是所有功能都可以正常使用。
 
-你可以用client.py测试:
+### API 列表:
+- Ollama API
+  - `/api/chat`
+  - `/api/tags`
+- OpenAI API
+  - `/v1/chat/completions`
+  - `/v1/models`
+
+你可以用client.py测试(OpenAI API格式):
 ```bash
 uv run client.py
 ```
@@ -84,6 +92,7 @@ uv run client.py
 - [x] 删除了对transformers的AutoTokenizer的依赖, 现在无需配置网络环境以连接到huggingface.  --20250211
 - [x] 适配了1.2.3的rkllm版本. 优化了代码逻辑. 默认模板使用ChatML格式. --20251208
 - [x] 如果RKLLM忙碌，那么请求会等待最多10秒，而不是立即返回忙碌信息. --20251210
+- [x] 适配了Ollama, Flask 替换为了 FastAPI. API URL发生了变化。
 
 ## 模型
 请参照[rkllm_model_zoo](https://github.com/airockchip/rknn-llm/tree/main#download)
