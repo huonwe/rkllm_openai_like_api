@@ -29,7 +29,7 @@ ENV TARGET_PLATFORM=rk3588
 
 EXPOSE 8080
 
-CMD echo "Starting RKLLM server with model path: $RKLLM_MODEL_PATH and target platform: $TARGET_PLATFORM"
+# CMD echo "Starting RKLLM server with model path: $RKLLM_MODEL_PATH and target platform: $TARGET_PLATFORM"
 CMD uv run server.py \
     --rkllm_model_path "$RKLLM_MODEL_PATH" \
     --target_platform "$TARGET_PLATFORM" \
