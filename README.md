@@ -78,7 +78,7 @@ uv run server.py
   - You can manually specify parameters, for example:
     `uv run server.py --rkllm_model_path=path/to/model.rkllm --target_platform=rk3588 --port=8080`
 
-After startup, you can connect to this service via `http://your.ip:11434/api/v1`. Because only the `/v1/chat/completions` (OpenAI API) endpoint is implemented, not all features may function as expected.
+After startup, you can connect to OpenAI API via `http://your.ip:11434/api/v1`. Because only the `/v1/chat/completions` endpoint is implemented, not all features may function as expected.
 
 ### API List:
 - Ollama API
