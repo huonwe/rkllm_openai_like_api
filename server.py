@@ -55,13 +55,13 @@ class ChatResponse(BaseModel):
     done: bool
 
 class ChatRequest(BaseModel):
-    model: str
     messages: List[Dict[str, Any]]
     tools: Optional[List[Dict[str, Any]]] = None
     stream: Optional[bool] = False
     think: Optional[bool] = True    # Default True for Qwen3
     
     # OpenAI compatibility fields (ignored but allowed)
+    # model: str
     # max_tokens: Optional[int] = None
     # temperature: Optional[float] = None
     # top_p: Optional[float] = None
