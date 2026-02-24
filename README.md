@@ -110,4 +110,4 @@ While such tasks are in progress, users will be unable to chat with the model. T
 
 ## Models
 
-Please refer to the [rkllm\_model\_zoo](https://github.com/airockchip/rknn-llm/tree/main#download).
+Please refer to the [rkllm_model_zoo](https://github.com/airockchip/rknn-llm/tree/main#download).
