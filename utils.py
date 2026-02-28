@@ -1,57 +1,61 @@
 import re
 
+
 def apply_chat_template(messages, thinking=True):
     """
-    适用于大部分采用 ChatML 格式的模型。
+    Applies the ChatML format, compatible with most models including Qwen.
+    RKLLM retains the original Tokenizer behavior unless specifically overridden.
+    Standard special tokens for Qwen are <|im_start|> and <|im_end|>.
     """
-    # 定义标准 ChatML 令牌
-    # 注意：RKLLM 转换时如果没有特殊指定，通常保留了原模型的 Tokenizer 行为
-    # Qwen 系列的标准特殊 Token 是 <|im_start|> 和 <|im_end|>
     im_start = "<|im_start|>"
     im_end = "<|im_end|>"
-    
-    # 2. 构建 Prompt
+
     prompt = ""
-    
+
     for msg in messages:
         role = msg['role']
         content = msg['content']
-        
-        # 移除思维链内容（如果不想让模型看到之前的思考过程，保留此逻辑）
+
+        # Remove chain-of-thought content if we don't want the model to see previous thought processes
         content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
 
-        # 格式：<|im_start|>role\ncontent<|im_end|>\n + /nothink if thinking != True
+        # Format: <|im_start|>role\ncontent<|im_end|>\n
+        # Append /nothink if thinking is disabled
         if thinking:
             prompt += f"{im_start}{role}\n{content}{im_end}\n"
         else:
             prompt += f"{im_start}{role}\n{content} /nothink{im_end}\n"
 
-    # 追加助手角色的起始标记，等待模型生成内容
+    # Append the assistant start tag to prompt the model to generate content
     prompt += f"{im_start}assistant\n"
-    
+
     return prompt
 
+
 def make_llm_response(llm_output: str) -> dict:
-    # Define the structure for the returned response.
+    """
+    Defines the standard OpenAI-compatible structure for the returned response.
+    """
     rkllm_responses = {
-        "id": "rkllm_chat",
-        "object": "rkllm_chat",
+        "id": "chatcmpl-rkllm",
+        "object": "chat.completion",
         "created": None,
-        "choices": [],
+        "model": "rkllm-model",
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": llm_output,
+                },
+                "logprobs": None,
+                "finish_reason": "stop"
+            }
+        ],
         "usage": {
-        "prompt_tokens": None,
-        "completion_tokens": None,
-        "total_tokens": None
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
         }
     }
-    rkllm_responses["choices"].append(
-        {"index": 0,
-        "message": {
-            "role": "assistant",
-            "content": llm_output,
-        },
-        "logprobs": None,
-        "finish_reason": "stop"
-        }
-    )
     return rkllm_responses

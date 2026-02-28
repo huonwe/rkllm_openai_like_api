@@ -1,37 +1,40 @@
 FROM python:3.12-slim
 
-
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
+# 1. Install ONLY required runtime dependencies (Removed curl & git)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# 2. Copy `uv` directly from the official image (Saves space and avoids installing curl)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /rkllm_server
 
-COPY ./lib /rkllm_server/lib
-COPY ./rkllm.py /rkllm_server/rkllm.py
-COPY ./server.py /rkllm_server/server.py
-COPY ./utils.py /rkllm_server/utils.py
-COPY ./pyproject.toml /rkllm_server/pyproject.toml
-COPY ./uv.lock /rkllm_server/uv.lock
+# 3. Optimize Caching: Copy ONLY dependency files first
+COPY pyproject.toml uv.lock ./
 
-RUN cp lib/*.so /usr/lib/ && \
-    ldconfig
+# Install dependencies (ignoring dev dependencies for a smaller production image)
+RUN uv sync --frozen --no-dev
 
-RUN uv sync
+# 4. Copy the rest of the application files
+COPY ./lib ./lib
+COPY ./rkllm.py ./server.py ./utils.py ./
 
-ENV RKLLM_MODEL_PATH=default.rkllm
-ENV TARGET_PLATFORM=rk3588
+# 5. Optimize Library Loading: Avoid copying .so files, just point to the directory
+ENV LD_LIBRARY_PATH="/rkllm_server/lib:${LD_LIBRARY_PATH}"
 
-EXPOSE 8080
+# Environment Variables
+ENV RKLLM_MODEL_PATH="default.rkllm"
+ENV TARGET_PLATFORM="rk3588"
+# 6. Default port set as an environment variable so it can be overridden
+ENV PORT=8080
 
-# CMD echo "Starting RKLLM server with model path: $RKLLM_MODEL_PATH and target platform: $TARGET_PLATFORM"
+# Expose the configured port
+EXPOSE $PORT
+
+# 7. Start the server using the $PORT environment variable
 CMD uv run server.py \
     --rkllm_model_path "$RKLLM_MODEL_PATH" \
     --target_platform "$TARGET_PLATFORM" \
-    --port 8080 \
+    --port "$PORT" \
     --isDocker y
