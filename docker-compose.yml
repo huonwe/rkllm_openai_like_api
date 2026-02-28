@@ -1,21 +1,17 @@
 services:
   rkllm-server:
-    image: dukihiroi/rkllm-server:latest
+    build: .
     container_name: rkllm-server
     restart: unless-stopped
     privileged: true
-    
     ports:
-      - "8080:8080"
-      
+      - "${PORT:-8080}:${PORT:-8080}"
     volumes:
+      # Map host NPU device to container
       - /dev:/dev
-
-      # The models directory should contain the model file to be used
+      # Mount your local models directory
       - ./models:/rkllm_server/models
-
     environment:
-      # Set the target platform (e.g., rk3566, rk3588)
-      - TARGET_PLATFORM=rk3588
-      # The model path should match the model file name in the ./models directory
-      - RKLLM_MODEL_PATH=qwen3-vl-2b-instruct_w8a8_rk3588.rkllm
+      - TARGET_PLATFORM=${TARGET_PLATFORM:-rk3588}
+      - RKLLM_MODEL_PATH=${MODEL_NAME:-qwen3-vl-2b-instruct_w8a8_rk3588.rkllm}
+      - PORT=${PORT:-8080}

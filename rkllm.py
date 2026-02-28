@@ -174,7 +174,7 @@ class RKLLMResult(ctypes.Structure):
     ]
 
 
-# Define thread-safe queue for retrieving generated tokens
+# Define thread-safe queue for retrieving generated tokens and embeddings
 output_queue = queue.Queue()
 global_state = -1
 
@@ -184,6 +184,18 @@ def callback_impl(result, userdata, state):
     global global_state
     if state == LLMCallState.RKLLM_RUN_FINISH:
         global_state = state
+
+        # Extract Embeddings if they exist in the payload
+        if result and result.contents.last_hidden_layer.embd_size > 0:
+            embd_size = result.contents.last_hidden_layer.embd_size
+            hidden_states_ptr = ctypes.cast(
+                result.contents.last_hidden_layer.hidden_states,
+                ctypes.POINTER(ctypes.c_float * embd_size)
+            )
+            # Safely cast pointer array to Python list
+            vector = [float(hidden_states_ptr.contents[i]) for i in range(embd_size)]
+            output_queue.put({"embedding": vector})
+
         output_queue.put(None)  # Sentinel to mark end of generation
     elif state == LLMCallState.RKLLM_RUN_ERROR:
         global_state = state
@@ -219,15 +231,14 @@ class RKLLM(object):
         rkllm_param.repeat_penalty = 1.1
         rkllm_param.frequency_penalty = 0.0
         rkllm_param.presence_penalty = 0.0
-
         rkllm_param.mirostat = 0
         rkllm_param.mirostat_tau = 5.0
         rkllm_param.mirostat_eta = 0.1
-
         rkllm_param.is_async = False
 
-        rkllm_param.img_start = "".encode('utf-8')
-        rkllm_param.img_end = "".encode('utf-8')
+        # Set valid Vision tags
+        rkllm_param.img_start = "<image>".encode('utf-8')
+        rkllm_param.img_end = "</image>".encode('utf-8')
         rkllm_param.img_content = "".encode('utf-8')
 
         rkllm_param.extend_param.base_domain_id = 0
@@ -320,6 +331,20 @@ class RKLLM(object):
         rkllm_input.input_data.prompt_input = ctypes.c_char_p(prompt.encode('utf-8'))
         self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)
 
+    def get_embedding(self, prompt):
+        """Switches the NPU to embedding mode, extracts vectors, and switches back."""
+        self.rkllm_infer_params.mode = RKLLMInferMode.RKLLM_INFER_GET_LAST_HIDDEN_LAYER
+
+        rkllm_input = RKLLMInput()
+        rkllm_input.role = b"user"
+        rkllm_input.enable_thinking = False
+        rkllm_input.input_type = RKLLMInputType.RKLLM_INPUT_PROMPT
+        rkllm_input.input_data.prompt_input = ctypes.c_char_p(prompt.encode('utf-8'))
+
+        self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)
+
+        self.rkllm_infer_params.mode = RKLLMInferMode.RKLLM_INFER_GENERATE
+
     def abort(self):
         return self.rkllm_abort(self.handle)
 
@@ -333,7 +358,6 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
     """
     global global_state
 
-    # Clear any residual queue items
     while not output_queue.empty():
         output_queue.get_nowait()
 
@@ -344,11 +368,9 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
 
     try:
         while True:
-            # Block until an item is available in the queue (CPU optimization)
             item = output_queue.get()
 
             if item is None:
-                # End of generation sentinel
                 break
 
             if isinstance(item, Exception):
@@ -358,7 +380,6 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
             yield item
 
     except GeneratorExit:
-        # Client disconnected mid-stream
         print("\n[Info] Client disconnected! Aborting RKLLM inference...")
         rkllm_model.abort()
         raise
@@ -372,6 +393,34 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
         if model_thread.is_alive():
             model_thread.join()
         print("\n[Info] Inference thread finished.")
+
+
+def get_RKLLM_embeddings(rkllm_model, text: str):
+    """Blocking function to retrieve embeddings securely via the queue."""
+    global global_state
+
+    while not output_queue.empty():
+        output_queue.get_nowait()
+
+    global_state = -1
+
+    thread = threading.Thread(target=rkllm_model.get_embedding, args=(text,))
+    thread.start()
+
+    embedding_vector = []
+    try:
+        while True:
+            item = output_queue.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+            if isinstance(item, dict) and "embedding" in item:
+                embedding_vector = item["embedding"]
+    finally:
+        thread.join()
+
+    return embedding_vector
 
 
 def get_global_state():

@@ -1,7 +1,7 @@
 [project]
 name = "rkllm-3588-openai-like-api"
-version = "0.1.0"
-description = "OpenAI and Ollama compatible API server for Rockchip NPU (RKLLM)"
+version = "0.2.0"
+description = "OpenAI and Ollama compatible API server for Rockchip NPU (RKLLM) with Vision and Embeddings support"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

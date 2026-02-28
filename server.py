@@ -16,9 +16,9 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Union
 
 from utils import apply_chat_template, make_llm_response
-from rkllm import RKLLM, get_RKLLM_output, get_global_state
+from rkllm import RKLLM, get_RKLLM_output, get_RKLLM_embeddings, get_global_state
 
-app = FastAPI(title="RKLLM API Server", description="OpenAI and Ollama Compatible API")
+app = FastAPI(title="RKLLM API Server", description="OpenAI and Ollama Compatible API (Vision & Embeddings)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +52,13 @@ class ResponseMessage(BaseModel):
     tool_calls: Optional[List[ToolCall]] = None
 
 
+class ChatRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    tools: Optional[List[Dict[str, Any]]] = None
+    stream: Optional[bool] = False
+    think: Optional[bool] = True
+
+
 class ChatResponse(BaseModel):
     model: str
     created_at: str
@@ -59,11 +66,9 @@ class ChatResponse(BaseModel):
     done: bool
 
 
-class ChatRequest(BaseModel):
-    messages: List[Dict[str, Any]]
-    tools: Optional[List[Dict[str, Any]]] = None
-    stream: Optional[bool] = False
-    think: Optional[bool] = True
+class EmbeddingRequest(BaseModel):
+    input: Union[str, List[str]]
+    model: str = "rkllm-model"
 
 
 # --- Utilities ---
@@ -87,7 +92,7 @@ def inject_tool_prompt(messages: List[Dict], tools: List[Dict]) -> List[Dict]:
     has_system = False
     for msg in messages:
         if msg.get("role") == "system":
-            new_messages.append({"role": "system", "content": system_content + "\n" + msg.get("content", "")})
+            new_messages.append({"role": "system", "content": system_content + "\n" + str(msg.get("content", ""))})
             has_system = True
         else:
             new_messages.append(msg)
@@ -101,7 +106,6 @@ def parse_model_output(text: str, enable_think: bool) -> tuple[str, str, List[Di
     thinking_content = ""
     clean_text = text
 
-    # Extract Think Tags
     think_pattern = r"<think>(.*?)</think>"
     think_matches = list(re.finditer(think_pattern, clean_text, re.DOTALL))
     for match in think_matches:
@@ -109,7 +113,6 @@ def parse_model_output(text: str, enable_think: bool) -> tuple[str, str, List[Di
             thinking_content += match.group(1).strip() + "\n"
         clean_text = clean_text.replace(match.group(0), "")
 
-    # Extract Tools
     tool_calls = []
     tool_pattern = r"<tool_call>(.*?)</tool_call>"
     tool_matches = list(re.finditer(tool_pattern, clean_text, re.DOTALL))
@@ -137,9 +140,48 @@ def health_check():
     return {"status": "ok", "state": "idle" if not hw_lock.locked() else "busy"}
 
 
+@app.post("/v1/embeddings")
+def openai_embeddings(request: EmbeddingRequest):
+    if not hw_lock.acquire(blocking=False):
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"message": "Server busy", "type": "server_error", "code": "server_busy"}}
+        )
+
+    try:
+        inputs = request.input if isinstance(request.input, list) else [request.input]
+        data_results = []
+
+        for idx, text in enumerate(inputs):
+            vector = get_RKLLM_embeddings(rkllm_model, text)
+
+            data_results.append({
+                "object": "embedding",
+                "embedding": vector,
+                "index": idx
+            })
+
+        return JSONResponse(content={
+            "object": "list",
+            "data": data_results,
+            "model": request.model,
+            "usage": {
+                "prompt_tokens": 0,
+                "total_tokens": 0
+            }
+        })
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"message": str(e), "type": "server_error", "code": "internal_error"}}
+        )
+    finally:
+        hw_lock.release()
+
+
 @app.post("/api/chat")
 def chat_endpoint(request: ChatRequest):
-    # Non-blocking lock check to gracefully reject requests when busy
     if not hw_lock.acquire(blocking=False):
         raise HTTPException(status_code=503, detail="RKLLM Hardware is currently processing another request.")
 
@@ -263,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument('--target_platform', '-t', type=str, default="rk3588")
     parser.add_argument('--lora_model_path', '-lm', type=str)
     parser.add_argument('--prompt_cache_path', type=str)
-    parser.add_argument('--port', '-p', type=int, default=11434)
+    parser.add_argument('--port', '-p', type=int, default=8080)
     parser.add_argument('--isDocker', type=str, default='n')
     args = parser.parse_args()
 
