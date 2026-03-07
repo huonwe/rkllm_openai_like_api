@@ -299,6 +299,19 @@ def list_openai_models():
     })
 
 
+@app.get("/hello")
+def test():
+    user_message = "Hello!"
+    messages = [{'role':'user','content':user_message}]
+    messages_formatted = apply_chat_template(messages)
+    results = get_RKLLM_output(rkllm_model, messages_formatted)
+    def stream_generator():
+        for r in results:
+            yield r
+        yield '\n'
+    return StreamingResponse(stream_generator(), media_type='text/event-stream')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--rkllm_model_path', '-m', type=str, default="models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm")
