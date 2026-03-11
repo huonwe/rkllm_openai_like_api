@@ -417,9 +417,12 @@ def test():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--rkllm_model_path', '-m', type=str, default="models/qwen3-vl-2b-instruct_w8a8_rk3588.rkllm")
+    parser.add_argument('--max_context_len', '-c', type=int, default=4096)
     parser.add_argument('--target_platform', '-t', type=str, default="rk3588")
     parser.add_argument('--lora_model_path', '-lm', type=str)
     parser.add_argument('--prompt_cache_path', type=str)
+
+    parser.add_argument('--host', type=str, default="0.0.0.0")
     parser.add_argument('--port', '-p', type=int, default=8080)
     parser.add_argument('--isDocker', type=str, default='n')
     args = parser.parse_args()
@@ -441,10 +444,17 @@ if __name__ == "__main__":
 
     resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
 
-    rkllm_model = RKLLM(rkllm_model_path, args.lora_model_path, args.prompt_cache_path, args.target_platform)
+    config = {
+        "max_context_len": args.max_context_len
+    }
+
+    print(f"[Info] RKLLM Model Path: {rkllm_model_path}")
+    print(f"[Info] RKLLM Config: {config}")
+
+    rkllm_model = RKLLM(config, rkllm_model_path, args.lora_model_path, args.prompt_cache_path, args.target_platform)
 
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port)
 
     rkllm_model.release()

@@ -217,14 +217,14 @@ class RKLLM(object):
     for the RKLLM model bound dynamically from librkllmrt.so.
     """
 
-    def __init__(self, model_path, lora_model_path=None, prompt_cache_path=None, platform="rk3588"):
+    def __init__(self, config:dict, model_path, lora_model_path=None, prompt_cache_path=None, platform="rk3588"):
         rkllm_param = RKLLMParam()
         rkllm_param.model_path = bytes(model_path, 'utf-8')
 
         # rkllm_param.max_context_len = 16384
         # max_context[16384] must be less than the model's max_context_limit[4096]
-        
-        rkllm_param.max_context_len = 4096
+
+        rkllm_param.max_context_len = config.get("max_context_len", 4096)
         rkllm_param.max_new_tokens = 8192
         rkllm_param.skip_special_token = True
         rkllm_param.n_keep = -1
