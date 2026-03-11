@@ -442,6 +442,9 @@ if __name__ == "__main__":
             subprocess.run(f"sudo bash {fix_req_file}", shell=True)
             print("[Info] CPU frequency fixed via shell script.")
 
+        if os.path.exists(fix_req_file+".d"):
+            print(f"[Info] CPU frequency fix script will not be applied. Remove the suffix '.d' to enable it: {fix_req_file+'.d'}")
+
     resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
 
     config = {
