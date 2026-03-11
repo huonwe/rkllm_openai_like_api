@@ -221,8 +221,8 @@ class RKLLM(object):
         rkllm_param = RKLLMParam()
         rkllm_param.model_path = bytes(model_path, 'utf-8')
 
-        rkllm_param.max_context_len = 4096
-        rkllm_param.max_new_tokens = 4096
+        rkllm_param.max_context_len = 16384
+        rkllm_param.max_new_tokens = 8192
         rkllm_param.skip_special_token = True
         rkllm_param.n_keep = -1
         rkllm_param.top_k = 1
@@ -391,7 +391,9 @@ def get_RKLLM_output(rkllm_model, chat_formatted):
 
     finally:
         if model_thread.is_alive():
-            model_thread.join()
+            model_thread.join(timeout=10.0)
+            if model_thread.is_alive():
+                print("\n[Warning] Inference thread did not stop within timeout.")
         print("\n[Info] Inference thread finished.")
 
 
