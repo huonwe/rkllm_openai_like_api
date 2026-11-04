@@ -4,7 +4,7 @@ import time
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
 from datetime import datetime, timezone
-from api.common import ChatRequest, EmbeddingRequest, hw_lock, global_state
+from api.common import ChatRequest, EmbeddingRequest, hw_lock, global_config
 from api.utils import apply_chat_template, make_llm_response
 from rkllm import get_RKLLM_output, get_RKLLM_embeddings
 
@@ -23,7 +23,7 @@ def openai_embeddings(request: EmbeddingRequest):
         data_results = []
 
         for idx, text in enumerate(inputs):
-            vector = get_RKLLM_embeddings(global_state.rkllm_model, text)
+            vector = get_RKLLM_embeddings(global_config.rkllm_model, text)
 
             data_results.append({
                 "object": "embedding",
@@ -52,7 +52,7 @@ def openai_embeddings(request: EmbeddingRequest):
 @router.post("/v1/chat/completions")
 async def openai_chat_completions(request: ChatRequest):
     created_time = int(time.time())
-    model_name = os.path.basename(global_state.model_path) if global_state.model_path else "rkllm"
+    model_name = os.path.basename(global_config.model_path) if global_config.model_path else "rkllm"
 
     if request.stream:
         def stream_generator():
@@ -61,7 +61,7 @@ async def openai_chat_completions(request: ChatRequest):
                 return
             try:
                 messages_formatted = apply_chat_template(request.messages)
-                results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+                results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
                 for r in results:
                     yield f"data: {json.dumps({'id': f'chatcmpl-{created_time}', 'object': 'chat.completion.chunk', 'created': created_time, 'model': model_name, 'choices': [{'index': 0, 'delta': {'content': r}, 'finish_reason': None}]})}\n\n"
                 yield "data: [DONE]\n\n"
@@ -73,7 +73,7 @@ async def openai_chat_completions(request: ChatRequest):
         return JSONResponse(status_code=503, content={"error": {"message": "Server is busy", "type": "server_error", "code": "server_busy"}})
     try:
         messages_formatted = apply_chat_template(request.messages)
-        results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+        results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
         rkllm_output = "".join(list(results))
         response_data = make_llm_response(rkllm_output)
         response_data["created"] = created_time
@@ -86,7 +86,7 @@ async def openai_chat_completions(request: ChatRequest):
 
 @router.get("/v1/models")
 def list_openai_models():
-    _model = os.path.basename(global_state.model_path) if global_state.model_path else "rkllm-model"
+    _model = os.path.basename(global_config.model_path) if global_config.model_path else "rkllm-model"
     return JSONResponse(content={
         "object": "list",
         "data": [{

@@ -57,10 +57,8 @@ class RKLLMParam(ctypes.Structure):
         ("mirostat_tau", ctypes.c_float),
         ("mirostat_eta", ctypes.c_float),
         ("skip_special_token", ctypes.c_bool),
+        ("ignore_eos_token", ctypes.c_bool),
         ("is_async", ctypes.c_bool),
-        ("img_start", ctypes.c_char_p),
-        ("img_end", ctypes.c_char_p),
-        ("img_content", ctypes.c_char_p),
         ("extend_param", RKLLMExtendParam),
     ]
 
@@ -87,14 +85,50 @@ class RKLLMTokenInput(ctypes.Structure):
     ]
 
 
-class RKLLMMultiModalInput(ctypes.Structure):
+class RKLLMImageInput(ctypes.Structure):
     _fields_ = [
-        ("prompt", ctypes.c_char_p),
         ("image_embed", ctypes.POINTER(ctypes.c_float)),
         ("n_image_tokens", ctypes.c_size_t),
         ("n_image", ctypes.c_size_t),
+        ("image_start", ctypes.c_char_p),
+        ("image_end", ctypes.c_char_p),
+        ("image_content", ctypes.c_char_p),
         ("image_width", ctypes.c_size_t),
-        ("image_height", ctypes.c_size_t)
+        ("image_height", ctypes.c_size_t),
+    ]
+
+
+class RKLLMVideoInput(ctypes.Structure):
+    _fields_ = [
+        ("video_embed", ctypes.POINTER(ctypes.c_float)),
+        ("n_frame_tokens", ctypes.c_size_t),
+        ("n_frame_per_video", ctypes.c_size_t),
+        ("n_video", ctypes.c_size_t),
+        ("video_start", ctypes.c_char_p),
+        ("video_end", ctypes.c_char_p),
+        ("video_content", ctypes.c_char_p),
+        ("frame_width", ctypes.c_size_t),
+        ("frame_height", ctypes.c_size_t),
+    ]
+
+
+class RKLLMAudioInput(ctypes.Structure):
+    _fields_ = [
+        ("audio_embed", ctypes.POINTER(ctypes.c_float)),
+        ("n_audio_tokens", ctypes.c_size_t),
+        ("n_audio", ctypes.c_size_t),
+        ("audio_start", ctypes.c_char_p),
+        ("audio_end", ctypes.c_char_p),
+        ("audio_content", ctypes.c_char_p),
+    ]
+
+
+class RKLLMMultiModalInput(ctypes.Structure):
+    _fields_ = [
+        ("prompt", ctypes.c_char_p),
+        ("image", RKLLMImageInput),
+        ("video", RKLLMVideoInput),
+        ("audio", RKLLMAudioInput),
     ]
 
 
@@ -116,6 +150,20 @@ class RKLLMInput(ctypes.Structure):
     ]
 
 
+class RKLLMSamplingParam(ctypes.Structure):
+    _fields_ = [
+        ("top_k", ctypes.c_int32),
+        ("top_p", ctypes.c_float),
+        ("temperature", ctypes.c_float),
+        ("repeat_penalty", ctypes.c_float),
+        ("frequency_penalty", ctypes.c_float),
+        ("presence_penalty", ctypes.c_float),
+        ("mirostat", ctypes.c_int32),
+        ("mirostat_tau", ctypes.c_float),
+        ("mirostat_eta", ctypes.c_float),
+    ]
+
+
 class RKLLMLoraParam(ctypes.Structure):
     _fields_ = [
         ("lora_adapter_name", ctypes.c_char_p)
@@ -134,7 +182,9 @@ class RKLLMInferParam(ctypes.Structure):
         ("mode", RKLLMInferMode),
         ("lora_params", ctypes.POINTER(RKLLMLoraParam)),
         ("prompt_cache_params", ctypes.POINTER(RKLLMPromptCacheParam)),
-        ("keep_history", ctypes.c_int)
+        ("sampling_params", ctypes.POINTER(RKLLMSamplingParam)),
+        ("keep_history", ctypes.c_int),
+        ("max_new_tokens", ctypes.c_int32),
     ]
 
 
@@ -207,8 +257,31 @@ def callback_impl(result, userdata, state):
     return 0
 
 
-callback_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(RKLLMResult), ctypes.c_void_p, ctypes.c_int)
-callback = callback_type(callback_impl)
+LLMResultCallbackType = ctypes.CFUNCTYPE(
+    ctypes.c_int, ctypes.POINTER(RKLLMResult), ctypes.c_void_p, ctypes.c_int
+)
+LLMTokenizerCallbackType = ctypes.CFUNCTYPE(
+    ctypes.c_int, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int32,
+    ctypes.POINTER(ctypes.c_int32), ctypes.c_int32
+)
+LLMGetEmbedCallbackType = ctypes.CFUNCTYPE(
+    ctypes.c_int, ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32),
+    ctypes.c_uint64, ctypes.c_void_p, ctypes.c_uint64
+)
+
+
+class RKLLMCallback(ctypes.Structure):
+    _fields_ = [
+        ("result_callback", LLMResultCallbackType),
+        ("result_userdata", ctypes.c_void_p),
+        ("tokenizer_callback", LLMTokenizerCallbackType),
+        ("tokenizer_userdata", ctypes.c_void_p),
+        ("embed_callback", LLMGetEmbedCallbackType),
+        ("embed_userdata", ctypes.c_void_p),
+    ]
+
+
+callback = LLMResultCallbackType(callback_impl)
 
 
 class RKLLM(object):
@@ -239,11 +312,6 @@ class RKLLM(object):
         rkllm_param.mirostat_eta = 0.1
         rkllm_param.is_async = False
 
-        # Set valid Vision tags
-        rkllm_param.img_start = "<image>".encode('utf-8')
-        rkllm_param.img_end = "</image>".encode('utf-8')
-        rkllm_param.img_content = "".encode('utf-8')
-
         rkllm_param.extend_param.base_domain_id = 0
         rkllm_param.extend_param.embed_flash = 1
         rkllm_param.extend_param.n_batch = 1
@@ -258,10 +326,18 @@ class RKLLM(object):
         self.handle = RKLLM_Handle_t()
 
         self.rkllm_init = rkllm_lib.rkllm_init
-        self.rkllm_init.argtypes = [ctypes.POINTER(RKLLM_Handle_t), ctypes.POINTER(RKLLMParam), callback_type]
+        self.rkllm_init.argtypes = [
+            ctypes.POINTER(RKLLM_Handle_t),
+            ctypes.POINTER(RKLLMParam),
+            ctypes.POINTER(RKLLMCallback),
+        ]
         self.rkllm_init.restype = ctypes.c_int
 
-        ret = self.rkllm_init(ctypes.byref(self.handle), ctypes.byref(rkllm_param), callback)
+        self.callback = RKLLMCallback()
+        self.callback.result_callback = callback
+        ret = self.rkllm_init(
+            ctypes.byref(self.handle), ctypes.byref(rkllm_param), ctypes.byref(self.callback)
+        )
         if ret != 0:
             print("\n[Error] RKLLM initialization failed\n")
             exit(1)
@@ -307,7 +383,9 @@ class RKLLM(object):
         ctypes.memset(ctypes.byref(self.rkllm_infer_params), 0, ctypes.sizeof(RKLLMInferParam))
         self.rkllm_infer_params.mode = RKLLMInferMode.RKLLM_INFER_GENERATE
         self.rkllm_infer_params.lora_params = ctypes.pointer(rkllm_lora_params) if rkllm_lora_params else None
+        self.rkllm_infer_params.sampling_params = None
         self.rkllm_infer_params.keep_history = 0
+        self.rkllm_infer_params.max_new_tokens = 0
 
         self.prompt_cache_path = None
         if prompt_cache_path:

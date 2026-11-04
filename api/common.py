@@ -7,11 +7,11 @@ from typing import List, Optional, Dict, Any, Union
 # Global hardware lock to ensure RKLLM inference runs strictly one at a time
 hw_lock = threading.Lock()
 
-class GlobalState:
+class GlobalConfig:
     model_path: str = ""
     rkllm_model: Any = None
 
-global_state = GlobalState()
+global_config = GlobalConfig()
 
 # --- Pydantic Models ---
 

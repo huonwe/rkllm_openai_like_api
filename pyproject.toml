@@ -9,6 +9,6 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.11.9",
     "requests>=2.32.3",
-    "rknn-toolkit-lite2>=2.3.0",
+    "rknn-toolkit-lite2>=2.5.0",
     "uvicorn>=0.38.0",
 ]

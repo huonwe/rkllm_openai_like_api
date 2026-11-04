@@ -3,7 +3,7 @@ import json
 import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
-from api.common import hw_lock, global_state
+from api.common import hw_lock, global_config
 from api.utils import apply_chat_template
 from rkllm import get_RKLLM_output
 
@@ -27,7 +27,7 @@ async def anthropic_messages(request: Request):
             content = " ".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
         messages.append({"role": msg["role"], "content": content})
 
-    model_name = body.get("model", os.path.basename(global_state.model_path) if global_state.model_path else "rkllm")
+    model_name = body.get("model", os.path.basename(global_config.model_path) if global_config.model_path else "rkllm")
     msg_id = f"msg_{int(time.time())}"
 
     if stream:
@@ -37,7 +37,7 @@ async def anthropic_messages(request: Request):
                 return
             try:
                 messages_formatted = apply_chat_template(messages, thinking=False)
-                results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+                results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
                 yield f"event: message_start\ndata: {json.dumps({'type':'message_start','message':{'id':msg_id,'type':'message','role':'assistant','content':[],'model':model_name,'stop_reason':None,'usage':{'input_tokens':0,'output_tokens':1}}})}\n\n"
                 yield f"event: content_block_start\ndata: {json.dumps({'type':'content_block_start','index':0,'content_block':{'type':'text','text':''}})}\n\n"
                 yield "event: ping\ndata: {\"type\":\"ping\"}\n\n"
@@ -60,7 +60,7 @@ async def anthropic_messages(request: Request):
         return JSONResponse(status_code=529, content={"type": "error", "error": {"type": "overloaded_error", "message": "Server busy"}})
     try:
         messages_formatted = apply_chat_template(messages, thinking=False)
-        results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+        results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
         full_text = "".join(list(results))
         return JSONResponse(content={
             "id": msg_id,

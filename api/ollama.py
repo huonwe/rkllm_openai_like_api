@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from datetime import datetime, timezone
-from api.common import ChatRequest, ChatResponse, ResponseMessage, hw_lock, global_state, inject_tool_prompt, parse_model_output
+from api.common import ChatRequest, ChatResponse, ResponseMessage, hw_lock, global_config, inject_tool_prompt, parse_model_output
 from api.utils import apply_chat_template
 from rkllm import get_RKLLM_output
 
@@ -21,7 +21,7 @@ def chat_endpoint(request: ChatRequest):
                 if request.tools:
                     messages = inject_tool_prompt(messages, request.tools)
                 messages_formatted = apply_chat_template(messages, thinking=request.think)
-                results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+                results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
                 for r in results:
                     yield json.dumps({
                         "model": request.model if hasattr(request, 'model') else "rkllm",
@@ -46,7 +46,7 @@ def chat_endpoint(request: ChatRequest):
         if request.tools:
             messages = inject_tool_prompt(messages, request.tools)
         messages_formatted = apply_chat_template(messages, thinking=request.think)
-        results = get_RKLLM_output(global_state.rkllm_model, messages_formatted)
+        results = get_RKLLM_output(global_config.rkllm_model, messages_formatted)
         full_text = "".join(list(results))
         clean_content, thinking_content, _ = parse_model_output(full_text, request.think is not False)
         resp_msg = ResponseMessage(role="assistant", content=clean_content)
@@ -68,8 +68,8 @@ def ollama_version():
 
 @router.get("/api/ps")
 def ollama_ps():
-    _model = os.path.basename(global_state.model_path) if global_state.model_path else "rkllm-model"
-    model_size = os.path.getsize(global_state.model_path) if global_state.model_path and os.path.exists(global_state.model_path) else 0
+    _model = os.path.basename(global_config.model_path) if global_config.model_path else "rkllm-model"
+    model_size = os.path.getsize(global_config.model_path) if global_config.model_path and os.path.exists(global_config.model_path) else 0
     return JSONResponse(content={
         "models": [{
             "name": _model,
@@ -90,8 +90,8 @@ def ollama_ps():
 
 @router.get("/api/tags")
 def ollama_list_models():
-    _model = os.path.basename(global_state.model_path) if global_state.model_path else "rkllm-model"
-    model_size = os.path.getsize(global_state.model_path) if global_state.model_path and os.path.exists(global_state.model_path) else 0
+    _model = os.path.basename(global_config.model_path) if global_config.model_path else "rkllm-model"
+    model_size = os.path.getsize(global_config.model_path) if global_config.model_path and os.path.exists(global_config.model_path) else 0
     return JSONResponse(content={
         "models": [{
             "name": _model,
